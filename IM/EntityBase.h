@@ -2,11 +2,8 @@
 
 using namespace System;
 
-public ref class EntityBase abstract {
+public ref class EntityBase
+{
 public:
-    int ID;
- /*   virtual property int ID {
-        int get() abstract;
-        void set(int value) abstract;
-    }*/
+	//int ID;
 };

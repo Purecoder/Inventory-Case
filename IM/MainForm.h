@@ -10,8 +10,9 @@ namespace IM {
 	using namespace System::Drawing;
 
 #include "MSSQLRepository.h"
-#include "Item.h"
-#include "AddItemForm.h"
+#include "ItemViewModel.h"
+#include "ItemForm.h"
+#include "EntityActionType.h"
 
 
 	/// <summary>
@@ -39,9 +40,11 @@ namespace IM {
 				delete components;
 			}
 		}
-	private: System::Windows::Forms::Button^ button1;
+
 	private: System::Windows::Forms::DataGridView^ grdProducts;
 	private: System::Windows::Forms::Button^ btnAddNewItemForm;
+	private: System::Windows::Forms::Button^ btnRefresh;
+
 
 
 	protected:
@@ -59,21 +62,11 @@ namespace IM {
 		/// </summary>
 		void InitializeComponent(void)
 		{
-			this->button1 = (gcnew System::Windows::Forms::Button());
 			this->grdProducts = (gcnew System::Windows::Forms::DataGridView());
 			this->btnAddNewItemForm = (gcnew System::Windows::Forms::Button());
+			this->btnRefresh = (gcnew System::Windows::Forms::Button());
 			(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->grdProducts))->BeginInit();
 			this->SuspendLayout();
-			// 
-			// button1
-			// 
-			this->button1->Location = System::Drawing::Point(342, 57);
-			this->button1->Name = L"button1";
-			this->button1->Size = System::Drawing::Size(165, 136);
-			this->button1->TabIndex = 0;
-			this->button1->Text = L"button1";
-			this->button1->UseVisualStyleBackColor = true;
-			this->button1->Click += gcnew System::EventHandler(this, &MainForm::button1_Click);
 			// 
 			// grdProducts
 			// 
@@ -86,27 +79,39 @@ namespace IM {
 			this->grdProducts->ReadOnly = true;
 			this->grdProducts->RowHeadersWidth = 62;
 			this->grdProducts->RowTemplate->Height = 28;
+			this->grdProducts->SelectionMode = System::Windows::Forms::DataGridViewSelectionMode::FullRowSelect;
 			this->grdProducts->Size = System::Drawing::Size(1320, 398);
 			this->grdProducts->TabIndex = 1;
+			this->grdProducts->CellClick += gcnew System::Windows::Forms::DataGridViewCellEventHandler(this, &MainForm::grdProducts_CellClick);
 			// 
 			// btnAddNewItemForm
 			// 
-			this->btnAddNewItemForm->Location = System::Drawing::Point(1149, 191);
+			this->btnAddNewItemForm->Location = System::Drawing::Point(1149, 167);
 			this->btnAddNewItemForm->Name = L"btnAddNewItemForm";
 			this->btnAddNewItemForm->Size = System::Drawing::Size(183, 47);
 			this->btnAddNewItemForm->TabIndex = 2;
-			this->btnAddNewItemForm->Text = L"Yeni Ürün Giriþi";
+			this->btnAddNewItemForm->Text = L"Add New Item Form";
 			this->btnAddNewItemForm->UseVisualStyleBackColor = true;
 			this->btnAddNewItemForm->Click += gcnew System::EventHandler(this, &MainForm::btnAddNewItemForm_Click);
+			// 
+			// btnRefresh
+			// 
+			this->btnRefresh->Location = System::Drawing::Point(12, 167);
+			this->btnRefresh->Name = L"btnRefresh";
+			this->btnRefresh->Size = System::Drawing::Size(127, 47);
+			this->btnRefresh->TabIndex = 3;
+			this->btnRefresh->Text = L"Refresh Data";
+			this->btnRefresh->UseVisualStyleBackColor = true;
+			this->btnRefresh->Click += gcnew System::EventHandler(this, &MainForm::btnRefresh_Click);
 			// 
 			// MainForm
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(9, 20);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-			this->ClientSize = System::Drawing::Size(1344, 700);
+			this->ClientSize = System::Drawing::Size(1344, 747);
+			this->Controls->Add(this->btnRefresh);
 			this->Controls->Add(this->btnAddNewItemForm);
 			this->Controls->Add(this->grdProducts);
-			this->Controls->Add(this->button1);
 			this->Name = L"MainForm";
 			this->Text = L"MainForm";
 			this->Load += gcnew System::EventHandler(this, &MainForm::MainForm_Load);
@@ -118,49 +123,95 @@ namespace IM {
 
 
 	private: System::Void MainForm_Load(System::Object^ sender, System::EventArgs^ e) {
-	}
-	private: System::Void button1_Click(System::Object^ sender, System::EventArgs^ e) {
-
-		auto itemRepo = gcnew MSSQLRepository<Item^>();
-		auto items = itemRepo->GetAll(); // Verileri al
-
-		// DataGridView'a verileri ekleyin
-		grdProducts->DataSource = items; // Verileri DataGridView'a ata
-		//IRepository<Item>^ itemRepo = gcnew MSSQLRepository<Item>();
-
-		//IRepository<Item>^ itemRepo = gcnew MSSQLRepository<Item>("Server=localhost;Database=InventoryDB;Integrated Security=True");
-
-		//this->grdProducts->DataSource = 
+		loadGridData();
+		addAddionationalButtons();
 	}
 
-		   //void LoadDataToGrid<T>(DataGridView^ grid, IRepository<T>^ repo) where T : EntityBase, gcnew() {
-		   //	List<T>^ itemList = repo->GetAll();
-		   //	BindingSource^ bindingSource = gcnew BindingSource();
-
-		   //	DataTable^ table = gcnew DataTable();
-
-		   //	// Property'leri kullanarak kolon isimlerini dinamik oluþtur
-		   //	for each (auto prop in T::typeid->GetProperties()) {
-		   //		table->Columns->Add(gcnew DataColumn(prop->Name, prop->PropertyType));
-		   //	}
-
-		   //	// Verileri ekleyelim
-		   //	for each (T item in itemList) {
-		   //		DataRow^ row = table->NewRow();
-		   //		for each (auto prop in item->GetType()->GetProperties()) {
-		   //			row[prop->Name] = prop->GetValue(item);
-		   //		}
-		   //		table->Rows->Add(row);
-		   //	}
-
-		   //	bindingSource->DataSource = table;
-		   //	grid->DataSource = bindingSource;
-		   //}
-
-	private: System::Void btnAddNewItemForm_Click(System::Object^ sender, System::EventArgs^ e) {
-
-		auto addItemForm = gcnew AddItemForm();
-		addItemForm->ShowDialog(); // Modal form olarak aç
+	private: System::Void btnCellUpdate_Click(System::Object^ sender, System::Windows::Forms::DataGridViewCellEventArgs^ e)
+	{
+		auto selectedRow = grdProducts->CurrentRow;
+		if (selectedRow != nullptr)
+		{
+			auto itemIDCell = selectedRow->Cells["ItemID"];
+			if (itemIDCell != nullptr)
+			{
+				auto itemIDValue = itemIDCell->Value;
+				auto itemId = Int32::Parse(itemIDValue->ToString());
+				auto updateItemForm = gcnew ItemForm(EntityActionType::Update, itemId);
+				updateItemForm->ShowDialog();
+			}
+		}
 	}
-};
+
+	private: System::Void btnCellDelete_Click(System::Object^ sender, System::Windows::Forms::DataGridViewCellEventArgs^ e)
+	{
+		auto selectedRow = grdProducts->CurrentRow;
+		if (selectedRow != nullptr)
+		{
+			auto itemIDCell = selectedRow->Cells["ItemID"];
+			if (itemIDCell != nullptr)
+			{
+				auto itemIDValue = itemIDCell->Value;
+				auto itemId = Int32::Parse(itemIDValue->ToString());
+
+				auto itemRepo = gcnew MSSQLRepository<Item^>();
+				itemRepo->Delete(itemId);
+				loadGridData();
+			}
+		}
+	}
+
+	private: System::Void btnAddNewItemForm_Click(System::Object^ sender, System::EventArgs^ e)
+	{
+		auto addItemForm = gcnew ItemForm(EntityActionType::Insert, 0);
+		addItemForm->ShowDialog();
+	}
+
+	private: System::Void grdProducts_CellClick(System::Object^ sender, System::Windows::Forms::DataGridViewCellEventArgs^ e) {
+		if (e->ColumnIndex >= 0 && e->RowIndex >= 0 && grdProducts->Columns[e->ColumnIndex])
+		{
+			auto buttonColumn = dynamic_cast<System::Windows::Forms::DataGridViewButtonColumn^>(grdProducts->Columns[e->ColumnIndex]);
+			if (buttonColumn != nullptr)
+			{
+				if (buttonColumn->Name == "btnCellUpdate")
+				{
+					btnCellUpdate_Click(sender, e);
+				}
+				else if (buttonColumn->Name == "btnCellDelete")
+				{
+					btnCellDelete_Click(sender, e);
+				}
+			}
+		}
+	}
+
+	private: System::Void loadGridData()
+	{
+		auto itemRepo = gcnew MSSQLRepository<ItemViewModel^>();
+		auto items = itemRepo->GetAllItems();
+
+		grdProducts->DataSource = items;
+	}
+
+	private: System::Void addAddionationalButtons()
+	{
+		System::Windows::Forms::DataGridViewButtonColumn^ updateColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
+		updateColumn->HeaderText = "";
+		updateColumn->Name = "btnCellUpdate";
+		updateColumn->Text = "Update";
+		updateColumn->UseColumnTextForButtonValue = true;
+		grdProducts->Columns->Add(updateColumn);
+
+		System::Windows::Forms::DataGridViewButtonColumn^ deleteColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
+		deleteColumn->HeaderText = "";
+		deleteColumn->Name = "btnCellDelete";
+		deleteColumn->Text = "Delete";
+		deleteColumn->UseColumnTextForButtonValue = true;
+		grdProducts->Columns->Add(deleteColumn);
+	}
+
+	private: System::Void btnRefresh_Click(System::Object^ sender, System::EventArgs^ e) {
+		loadGridData();
+	}
+	};
 }

@@ -18,18 +18,12 @@
     <ClCompile Include="MainForm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AddItemForm.cpp">
+    <ClCompile Include="ItemForm.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MainForm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DbHelper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="IDatabaseHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Item.h">
@@ -47,7 +41,19 @@
     <ClInclude Include="MSSQLRepository.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AddItemForm.h">
+    <ClInclude Include="ItemForm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemViewModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Validator.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityActionType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyAttribute.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

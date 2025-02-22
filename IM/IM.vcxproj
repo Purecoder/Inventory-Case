@@ -128,27 +128,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="AddItemForm.cpp" />
+    <ClCompile Include="ItemForm.cpp" />
     <ClCompile Include="MainForm.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AddItemForm.h">
+    <ClInclude Include="EntityActionType.h" />
+    <ClInclude Include="ItemForm.h">
       <FileType>CppForm</FileType>
     </ClInclude>
-    <ClInclude Include="DbHelper.h" />
     <ClInclude Include="Category.h" />
     <ClInclude Include="EntityBase.h" />
-    <ClInclude Include="IDatabaseHelper.h" />
     <ClInclude Include="IRepository.h" />
     <ClInclude Include="Item.h" />
+    <ClInclude Include="ItemViewModel.h" />
+    <ClInclude Include="KeyAttribute.h" />
     <ClInclude Include="MainForm.h">
       <FileType>CppForm</FileType>
     </ClInclude>
     <ClInclude Include="MSSQLRepository.h" />
+    <ClInclude Include="Validator.h" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="AddItemForm.resx">
-      <DependentUpon>AddItemForm.h</DependentUpon>
+    <EmbeddedResource Include="ItemForm.resx">
+      <DependentUpon>ItemForm.h</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.h</DependentUpon>

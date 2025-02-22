@@ -6,7 +6,7 @@ using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::Data;
 
-generic <typename T> //where T : EntityBase
+generic <typename T> where T : EntityBase
 public interface class IRepository {
 public:
 	void Add(T entity);
