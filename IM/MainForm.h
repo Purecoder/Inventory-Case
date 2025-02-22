@@ -124,7 +124,7 @@ namespace IM {
 
 	private: System::Void MainForm_Load(System::Object^ sender, System::EventArgs^ e) {
 		loadGridData();
-		addAddionationalButtons();
+		addAdditionalButtons();
 	}
 
 	private: System::Void btnCellUpdate_Click(System::Object^ sender, System::Windows::Forms::DataGridViewCellEventArgs^ e)
@@ -193,7 +193,7 @@ namespace IM {
 		grdProducts->DataSource = items;
 	}
 
-	private: System::Void addAddionationalButtons()
+	private: System::Void addAdditionalButtons()
 	{
 		System::Windows::Forms::DataGridViewButtonColumn^ updateColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
 		updateColumn->HeaderText = "";
