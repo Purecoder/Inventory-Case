@@ -133,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="EntityActionType.h" />
+    <ClInclude Include="IOHelper.h" />
     <ClInclude Include="ItemForm.h">
       <FileType>CppForm</FileType>
     </ClInclude>
@@ -146,6 +147,7 @@
       <FileType>CppForm</FileType>
     </ClInclude>
     <ClInclude Include="MSSQLRepository.h" />
+    <ClInclude Include="Utility.h" />
     <ClInclude Include="Validator.h" />
   </ItemGroup>
   <ItemGroup>

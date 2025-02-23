@@ -30,9 +30,14 @@ public:
 
 		if (connStr == nullptr)
 		{
-			throw gcnew InvalidOperationException("Connection string 'Inventory' database objesi bulunamadý!");
+			throw gcnew InvalidOperationException("Cannot found 'Inventory' db object for ConnectionString!");
 		}
 		connectionString = connStr;
+	}
+
+	int GetStockThreshold() {
+		String^ thresHoldSetting = ConfigurationManager::AppSettings["StockThreshold"];
+		return (thresHoldSetting != nullptr) ? Int32::Parse(thresHoldSetting) : 10;
 	}
 
 	String^ GetIdColumnName() {
@@ -75,7 +80,7 @@ public:
 			cmd->ExecuteNonQuery();
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Ekleme hatasý: " + ex->Message);
+			Console::WriteLine("Error while insert data. Error: " + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -114,7 +119,7 @@ public:
 			cmd->ExecuteNonQuery();
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Güncelleme hatasý: " + ex->Message);
+			Console::WriteLine("Error while update data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -132,7 +137,7 @@ public:
 			cmd->ExecuteNonQuery();
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Silme hatasý: " + ex->Message);
+			Console::WriteLine("Error while delete. Error: " + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -144,7 +149,7 @@ public:
 		SqlConnection^ conn = OpenConnection();
 		try {
 			String^ idColumn = GetIdColumnName();
-			String^ query = "SELECT item.ItemId,item.ItemName,cat.CategoryName,item.Quantity,item.UnitPrice FROM Items as item JOIN Categories as cat on item.CategoryId = cat.CategoryId";
+			String^ query = "SELECT item.ItemID,item.ItemName,cat.CategoryName,item.Quantity,item.UnitPrice FROM Items as item JOIN Categories as cat on item.CategoryId = cat.CategoryId";
 			SqlCommand^ cmd = gcnew SqlCommand(query, conn);
 			SqlDataReader^ reader = cmd->ExecuteReader();
 
@@ -161,7 +166,100 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Veri çekme hatasý: " + ex->Message);
+			Console::WriteLine("Error while retrieve data.  Error: " + ex->Message);
+		}
+		finally {
+			conn->Close();
+		}
+		return list;
+	}
+
+	List<T>^ GetLowStockItems() {
+		List<T>^ itemList = gcnew List<T>();
+		SqlConnection^ conn = OpenConnection();
+
+		try {
+			int threshold = GetStockThreshold();
+
+			SqlCommand^ command = gcnew SqlCommand("GetLowStockItems", conn);
+			command->CommandType = CommandType::StoredProcedure;
+			command->Parameters->Add(gcnew SqlParameter("@Threshold", threshold));
+
+			SqlDataAdapter^ adapter = gcnew SqlDataAdapter(command);
+			DataTable^ dataTable = gcnew DataTable();
+			adapter->Fill(dataTable);
+
+			itemList = ConvertDataTableToList(dataTable);
+		}
+		catch (Exception^ ex) {
+			MessageBox::Show("Hata: " + ex->Message, "Hata", MessageBoxButtons::OK, MessageBoxIcon::Error);
+		}
+		finally {
+			conn->Close();
+		}
+
+		return itemList;
+	}
+	
+
+	List<T>^ ConvertDataTableToList(DataTable^ dataTable) {
+		List<T>^ itemList = gcnew List<T>();
+
+		for (int i = 0; i < dataTable->Rows->Count; i++) {
+			T item = gcnew T();
+
+			for each (DataColumn ^ column in dataTable->Columns) {
+				String^ propertyName = column->ColumnName;
+				PropertyInfo^ property = T::typeid->GetProperty(propertyName);
+
+				if (property != nullptr) {
+					property->SetValue(item, Convert::ChangeType(dataTable->Rows[i][propertyName], property->PropertyType), nullptr);
+				}
+			}
+
+			itemList->Add(item);
+		}
+
+		return itemList;
+	}
+
+
+
+	List<T>^ GetAllItemsByFilterParams(String^ itemName, Nullable<int> categoryId, Nullable<int> minStock, Nullable<int> maxStock) override {
+		List<T>^ list = gcnew List<T>();
+		SqlConnection^ conn = OpenConnection();
+		try {
+			String^ idColumn = GetIdColumnName();
+
+			String^ query = "SELECT item.ItemID,item.ItemName,cat.CategoryName,item.Quantity,item.UnitPrice FROM Items as item JOIN Categories as cat on item.CategoryId = cat.CategoryId WHERE 1=1";
+			if (!String::IsNullOrEmpty(itemName)) query += " AND ItemName LIKE @ItemName";
+			if (minStock.HasValue) query += " AND Quantity > @MinStock";
+			if (maxStock.HasValue) query += " AND Quantity < @MaxStock";
+			if (categoryId.HasValue && categoryId.Value > 0) query += " AND cat.CategoryId = @CategoryID";
+
+			SqlCommand^ cmd = gcnew SqlCommand(query, conn);
+
+			if (!String::IsNullOrEmpty(itemName)) cmd->Parameters->AddWithValue("@ItemName", "%" + itemName + "%");
+			if (minStock.HasValue) cmd->Parameters->AddWithValue("@MinStock", minStock.Value);
+			if (maxStock.HasValue) cmd->Parameters->AddWithValue("@MaxStock", maxStock.Value);
+			if (categoryId.HasValue && categoryId.Value > 0) cmd->Parameters->AddWithValue("@CategoryID", categoryId.Value);
+
+			SqlDataReader^ reader = cmd->ExecuteReader();
+
+			while (reader->Read()) {
+				T obj = gcnew T();
+
+				auto itemPropList = obj->GetType()->GetProperties();
+				for each (auto prop in itemPropList) {
+
+					String^ columnName = prop->Name;
+					prop->SetValue(obj, reader[columnName]);
+				}
+				list->Add(obj);
+			}
+		}
+		catch (Exception^ ex) {
+			Console::WriteLine("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -189,7 +287,7 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Veri çekme hatasý: " + ex->Message);
+			Console::WriteLine("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -216,12 +314,11 @@ public:
 					{
 						prop->SetValue(obj, reader[columnName]);
 					}
-					//prop->SetValue(obj, reader[prop->Name]);
 				}
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Veri çekme hatasý: " + ex->Message);
+			Console::WriteLine("Error while retrieve data. Error: " + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -237,6 +334,6 @@ public:
 				return prop->Name;
 			}
 		}
-		return nullptr; // ID alaný bulunamazsa
+		return nullptr;
 	}
 };
