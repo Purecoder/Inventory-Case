@@ -19,9 +19,14 @@ private:
 	String^ connectionString;
 
 	SqlConnection^ OpenConnection() {
-		SqlConnection^ conn = gcnew SqlConnection(connectionString);
-		conn->Open();
-		return conn;
+		try {
+			SqlConnection^ conn = gcnew SqlConnection(connectionString);
+			conn->Open();
+			return conn;
+		}
+		catch (SqlException^ ex) {
+			MessageBox::Show("Error while connecting Database!", "Connection Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
+		}
 	}
 
 public:
@@ -35,28 +40,13 @@ public:
 		connectionString = connStr;
 	}
 
-	int GetStockThreshold() {
-		String^ thresHoldSetting = ConfigurationManager::AppSettings["StockThreshold"];
-		return (thresHoldSetting != nullptr) ? Int32::Parse(thresHoldSetting) : 10;
-	}
-
-	String^ GetIdColumnName() {
-		return T::typeid->Name + "ID";
-	}
-
-	String^ GetTableName() {
-		String^ typeName = T::typeid->Name;
-		if (typeName->EndsWith("y")) {
-			return typeName->Substring(0, typeName->Length - 1) + "ies";
-		}
-		return typeName + "s";
-	}
-
 	String^ LastUpdated = "LastUpdated";
 
 	void Add(T entity) override {
 		SqlConnection^ conn = OpenConnection();
+		SqlTransaction^ transaction = nullptr;
 		try {
+			transaction = conn->BeginTransaction();
 			String^ query = "INSERT INTO " + GetTableName() + " (";
 
 			List<String^>^ columns = gcnew List<String^>();
@@ -71,15 +61,19 @@ public:
 
 			query += String::Join(", ", columns) + ") VALUES (" + String::Join(", ", parameters) + ")";
 
-			SqlCommand^ cmd = gcnew SqlCommand(query, conn);
+			SqlCommand^ cmd = gcnew SqlCommand(query, conn, transaction);
 			for each (auto prop in entity->GetType()->GetProperties()) {
 				if (prop->Name != GetIdColumnName() && prop->Name != LastUpdated)
 					cmd->Parameters->AddWithValue("@" + prop->Name, prop->GetValue(entity));
 			}
 
 			cmd->ExecuteNonQuery();
+			transaction->Commit();
 		}
 		catch (Exception^ ex) {
+			if (transaction != nullptr) {
+				transaction->Rollback();
+			}
 			Console::WriteLine("Error while insert data. Error: " + ex->Message);
 		}
 		finally {
@@ -89,7 +83,9 @@ public:
 
 	void Update(T entity) override {
 		SqlConnection^ conn = OpenConnection();
+		SqlTransaction^ transaction = nullptr;
 		try {
+			transaction = conn->BeginTransaction(IsolationLevel::Serializable); // Or can be IsolationLevel::Snapshot
 			String^ idColumn = GetIdColumnName();
 			String^ query = "UPDATE " + GetTableName() + " SET ";
 
@@ -104,7 +100,7 @@ public:
 
 			auto idKey = FindPrimaryKey<T>();
 
-			SqlCommand^ cmd = gcnew SqlCommand(query, conn);
+			SqlCommand^ cmd = gcnew SqlCommand(query, conn, transaction);
 			for each (auto prop in entity->GetType()->GetProperties()) {
 
 				if (prop->Name == idKey)
@@ -117,8 +113,12 @@ public:
 			}
 
 			cmd->ExecuteNonQuery();
+			transaction->Commit();
 		}
 		catch (Exception^ ex) {
+			if (transaction != nullptr) {
+				transaction->Rollback();
+			}
 			Console::WriteLine("Error while update data. Error:" + ex->Message);
 		}
 		finally {
@@ -128,15 +128,22 @@ public:
 
 	void Delete(int id) override {
 		SqlConnection^ conn = OpenConnection();
+		SqlTransaction^ transaction = nullptr;
 		try {
+			transaction = conn->BeginTransaction();
+
 			String^ idColumn = GetIdColumnName();
 			String^ query = "DELETE FROM " + GetTableName() + " WHERE " + idColumn + " = @id";
 
-			SqlCommand^ cmd = gcnew SqlCommand(query, conn);
+			SqlCommand^ cmd = gcnew SqlCommand(query, conn, transaction);
 			cmd->Parameters->AddWithValue("@id", id);
 			cmd->ExecuteNonQuery();
+			transaction->Commit();
 		}
 		catch (Exception^ ex) {
+			if (transaction != nullptr) {
+				transaction->Rollback();
+			}
 			Console::WriteLine("Error while delete. Error: " + ex->Message);
 		}
 		finally {
@@ -173,57 +180,6 @@ public:
 		}
 		return list;
 	}
-
-	List<T>^ GetLowStockItems() {
-		List<T>^ itemList = gcnew List<T>();
-		SqlConnection^ conn = OpenConnection();
-
-		try {
-			int threshold = GetStockThreshold();
-
-			SqlCommand^ command = gcnew SqlCommand("GetLowStockItems", conn);
-			command->CommandType = CommandType::StoredProcedure;
-			command->Parameters->Add(gcnew SqlParameter("@Threshold", threshold));
-
-			SqlDataAdapter^ adapter = gcnew SqlDataAdapter(command);
-			DataTable^ dataTable = gcnew DataTable();
-			adapter->Fill(dataTable);
-
-			itemList = ConvertDataTableToList(dataTable);
-		}
-		catch (Exception^ ex) {
-			MessageBox::Show("Hata: " + ex->Message, "Hata", MessageBoxButtons::OK, MessageBoxIcon::Error);
-		}
-		finally {
-			conn->Close();
-		}
-
-		return itemList;
-	}
-	
-
-	List<T>^ ConvertDataTableToList(DataTable^ dataTable) {
-		List<T>^ itemList = gcnew List<T>();
-
-		for (int i = 0; i < dataTable->Rows->Count; i++) {
-			T item = gcnew T();
-
-			for each (DataColumn ^ column in dataTable->Columns) {
-				String^ propertyName = column->ColumnName;
-				PropertyInfo^ property = T::typeid->GetProperty(propertyName);
-
-				if (property != nullptr) {
-					property->SetValue(item, Convert::ChangeType(dataTable->Rows[i][propertyName], property->PropertyType), nullptr);
-				}
-			}
-
-			itemList->Add(item);
-		}
-
-		return itemList;
-	}
-
-
 
 	List<T>^ GetAllItemsByFilterParams(String^ itemName, Nullable<int> categoryId, Nullable<int> minStock, Nullable<int> maxStock) override {
 		List<T>^ list = gcnew List<T>();
@@ -295,7 +251,6 @@ public:
 		return list;
 	}
 
-
 	T GetById(int id) override {
 		T obj = gcnew T();
 		SqlConnection^ conn = OpenConnection();
@@ -326,6 +281,77 @@ public:
 		return obj;
 	}
 
+#pragma region Procedures
+
+	List<T>^ GetLowStockItems() {
+		List<T>^ itemList = gcnew List<T>();
+		SqlConnection^ conn = OpenConnection();
+
+		try {
+			int threshold = GetStockThreshold();
+
+			SqlCommand^ command = gcnew SqlCommand("GetLowStockItems", conn);
+			command->CommandType = CommandType::StoredProcedure;
+			command->Parameters->Add(gcnew SqlParameter("@Threshold", threshold));
+
+			SqlDataAdapter^ adapter = gcnew SqlDataAdapter(command);
+			DataTable^ dataTable = gcnew DataTable();
+			adapter->Fill(dataTable);
+
+			itemList = ConvertDataTableToList(dataTable);
+		}
+		catch (Exception^ ex) {
+			MessageBox::Show("Hata: " + ex->Message, "Hata", MessageBoxButtons::OK, MessageBoxIcon::Error);
+		}
+		finally {
+			conn->Close();
+		}
+
+		return itemList;
+	}
+
+#pragma endregion
+
+#pragma region Helper Methods
+
+	int GetStockThreshold() {
+		String^ thresHoldSetting = ConfigurationManager::AppSettings["StockThreshold"];
+		return (thresHoldSetting != nullptr) ? Int32::Parse(thresHoldSetting) : 10;
+	}
+
+	String^ GetIdColumnName() {
+		return T::typeid->Name + "ID";
+	}
+
+	String^ GetTableName() {
+		String^ typeName = T::typeid->Name;
+		if (typeName->EndsWith("y")) {
+			return typeName->Substring(0, typeName->Length - 1) + "ies";
+		}
+		return typeName + "s";
+	}
+
+	List<T>^ ConvertDataTableToList(DataTable^ dataTable) {
+		List<T>^ itemList = gcnew List<T>();
+
+		for (int i = 0; i < dataTable->Rows->Count; i++) {
+			T item = gcnew T();
+
+			for each (DataColumn ^ column in dataTable->Columns) {
+				String^ propertyName = column->ColumnName;
+				PropertyInfo^ property = T::typeid->GetProperty(propertyName);
+
+				if (property != nullptr) {
+					property->SetValue(item, Convert::ChangeType(dataTable->Rows[i][propertyName], property->PropertyType), nullptr);
+				}
+			}
+
+			itemList->Add(item);
+		}
+
+		return itemList;
+	}
+
 	generic <typename T>
 	String^ FindPrimaryKey() {
 		Type^ type = T::typeid;
@@ -336,4 +362,7 @@ public:
 		}
 		return nullptr;
 	}
+
+#pragma endregion
+
 };

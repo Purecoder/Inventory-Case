@@ -16,6 +16,8 @@ using namespace System::Globalization;
 #include "Validator.h"
 #include "EntityActionType.h"
 #include "Utility.h"
+#include "SessionManager.h"
+#include "RoleManager.h"
 
 
 public delegate void ItemFormClosedEventHandler();
@@ -24,6 +26,7 @@ public ref class ItemForm : public System::Windows::Forms::Form
 private:
 	int _updateItemId = 0;
 	EntityActionType _actionType;
+
 private: System::Windows::Forms::TextBox^ txtUnitPriceFloat;
 	   Item^ _currentItem;
 public:
@@ -31,9 +34,11 @@ public:
 
 	ItemForm(EntityActionType actionType, int itemId)
 	{
+
+		InitializeComponent();
+
 		_updateItemId = itemId;
 		_actionType = actionType;
-		InitializeComponent();
 
 		//Update button location defined according to action type
 		if (actionType == EntityActionType::Update)
@@ -276,6 +281,8 @@ private: System::Void AddItemForm_Load(System::Object^ sender, System::EventArgs
 		txtUnitPrice->Text = unitPriceStr->Substring(0, unitPriceStr->Length - 3);
 		auto cc = "";
 	}
+
+	RoleManager::ApplyRoleRestrictions(this, SessionManager::CurrentUser->Role);
 }
 
 
@@ -298,7 +305,14 @@ private: System::Void btnAddItem_Click(System::Object^ sender, System::EventArgs
 
 		auto itemRepo = gcnew MSSQLRepository<Item^>();
 		itemRepo->Add(newItem);
-		OnItemFormClosed();
+		try
+		{
+			OnItemFormClosed();
+		}
+		catch (Exception^ ex)
+		{
+			// Logs can be added.
+		}
 		MessageBox::Show("Item added!", "Information");
 		this->Close();
 	}

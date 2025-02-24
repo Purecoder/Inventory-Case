@@ -6,23 +6,33 @@ using namespace System::IO;
 using namespace System::Windows::Forms;
 using namespace System::Reflection;
 using namespace System::Globalization;
+using namespace System::Threading;
 
 public ref class IOHelper {
 public:
 	generic<typename T>
 	static void ExportToCSV(List<T>^ items, String^ fileName) {
 		try {
-			String^ filePath = GetUniqueFilePath(fileName);
-			StreamWriter^ writer = gcnew StreamWriter(filePath, false, System::Text::Encoding::UTF8);
+			SaveFileDialog^ saveFileDialog = gcnew SaveFileDialog();
+			saveFileDialog->Filter = "CSV Files (*.csv)|*.csv";
+			saveFileDialog->Title = "Save CSV File";
 
-			WriteHeader<T>(writer);
+			auto dateTime = DateTime::Now;
+			String^ fullFileName = String::Format(fileName + "_{0:D4}-{1:D2}-{2:D2}.csv", dateTime.Year, dateTime.Month, dateTime.Day);
+			saveFileDialog->FileName = fullFileName;
 
-			for each (T item in items) {
-				WriteItemToCSV(writer, item);
+			if (saveFileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
+				String^ filePath = fullFileName;
+				StreamWriter^ writer = gcnew StreamWriter(filePath, false, System::Text::Encoding::UTF8);
+
+				WriteHeader<T>(writer);
+
+				for each (T item in items) {
+					WriteItemToCSV(writer, item);
+				}
+
+				writer->Close();
 			}
-
-			writer->Close();
-			MessageBox::Show("Data successfully exported to a CSV file!", "Information", MessageBoxButtons::OK, MessageBoxIcon::Information);
 		}
 		catch (Exception^ ex) {
 			MessageBox::Show("Error: " + ex->Message, "Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
@@ -30,22 +40,6 @@ public:
 	}
 
 private:
-	static String^ GetUniqueFilePath(String^ fileName) {
-		auto dateTime = DateTime::Now;
-		String^ baseFileName = String::Format(fileName + "_{0:D4}-{1:D2}-{2:D2}.csv", dateTime.Year, dateTime.Month, dateTime.Day);
-		auto directory = System::Environment::CurrentDirectory;
-		String^ filePath = Path::Combine(directory, baseFileName);
-
-		int count = 1;
-		while (File::Exists(filePath)) {
-			String^ newFileName = String::Format(fileName + "_{0:Dd}-{1:D2}-{2:D2}_{3}.csv", dateTime.Year, dateTime.Month, dateTime.Day, count);
-			filePath = Path::Combine(directory, newFileName);
-			count++;
-		}
-
-		return filePath;
-	}
-
 	generic<typename T>
 	static void WriteHeader(StreamWriter^ writer) {
 		array<PropertyInfo^>^ properties = T::typeid->GetProperties();

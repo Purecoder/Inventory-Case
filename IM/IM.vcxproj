@@ -129,9 +129,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ItemForm.cpp" />
+    <ClCompile Include="LoginForm.cpp" />
     <ClCompile Include="MainForm.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AuthService.h" />
     <ClInclude Include="EntityActionType.h" />
     <ClInclude Include="IOHelper.h" />
     <ClInclude Include="ItemForm.h">
@@ -143,10 +145,17 @@
     <ClInclude Include="Item.h" />
     <ClInclude Include="ItemViewModel.h" />
     <ClInclude Include="KeyAttribute.h" />
+    <ClInclude Include="LoginForm.h">
+      <FileType>CppForm</FileType>
+    </ClInclude>
     <ClInclude Include="MainForm.h">
       <FileType>CppForm</FileType>
     </ClInclude>
     <ClInclude Include="MSSQLRepository.h" />
+    <ClInclude Include="RoleManager.h" />
+    <ClInclude Include="SessionManager.h" />
+    <ClInclude Include="User.h" />
+    <ClInclude Include="UserRole.h" />
     <ClInclude Include="Utility.h" />
     <ClInclude Include="Validator.h" />
   </ItemGroup>
@@ -154,8 +163,12 @@
     <EmbeddedResource Include="ItemForm.resx">
       <DependentUpon>ItemForm.h</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="LoginForm.resx">
+      <DependentUpon>LoginForm.h</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MainForm.resx">
       <DependentUpon>MainForm.h</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
