@@ -52,24 +52,27 @@ private:
 		// 
 		// txtUsername
 		// 
-		this->txtUsername->Location = System::Drawing::Point(100, 30);
+		this->txtUsername->Location = System::Drawing::Point(150, 46);
+		this->txtUsername->Margin = System::Windows::Forms::Padding(4, 5, 4, 5);
 		this->txtUsername->Name = L"txtUsername";
-		this->txtUsername->Size = System::Drawing::Size(150, 20);
+		this->txtUsername->Size = System::Drawing::Size(223, 26);
 		this->txtUsername->TabIndex = 0;
 		// 
 		// txtPassword
 		// 
-		this->txtPassword->Location = System::Drawing::Point(100, 70);
+		this->txtPassword->Location = System::Drawing::Point(150, 108);
+		this->txtPassword->Margin = System::Windows::Forms::Padding(4, 5, 4, 5);
 		this->txtPassword->Name = L"txtPassword";
-		this->txtPassword->Size = System::Drawing::Size(150, 20);
+		this->txtPassword->Size = System::Drawing::Size(223, 26);
 		this->txtPassword->TabIndex = 1;
 		this->txtPassword->UseSystemPasswordChar = true;
 		// 
 		// btnLogin
 		// 
-		this->btnLogin->Location = System::Drawing::Point(100, 110);
+		this->btnLogin->Location = System::Drawing::Point(150, 169);
+		this->btnLogin->Margin = System::Windows::Forms::Padding(4, 5, 4, 5);
 		this->btnLogin->Name = L"btnLogin";
-		this->btnLogin->Size = System::Drawing::Size(75, 23);
+		this->btnLogin->Size = System::Drawing::Size(112, 35);
 		this->btnLogin->TabIndex = 2;
 		this->btnLogin->Text = L"Login";
 		this->btnLogin->UseVisualStyleBackColor = true;
@@ -78,35 +81,42 @@ private:
 		// lblUsername
 		// 
 		this->lblUsername->AutoSize = true;
-		this->lblUsername->Location = System::Drawing::Point(30, 33);
+		this->lblUsername->Location = System::Drawing::Point(45, 51);
+		this->lblUsername->Margin = System::Windows::Forms::Padding(4, 0, 4, 0);
 		this->lblUsername->Name = L"lblUsername";
-		this->lblUsername->Size = System::Drawing::Size(55, 13);
+		this->lblUsername->Size = System::Drawing::Size(83, 20);
 		this->lblUsername->TabIndex = 3;
 		this->lblUsername->Text = L"Username";
 		// 
 		// lblPassword
 		// 
 		this->lblPassword->AutoSize = true;
-		this->lblPassword->Location = System::Drawing::Point(30, 73);
+		this->lblPassword->Location = System::Drawing::Point(45, 112);
+		this->lblPassword->Margin = System::Windows::Forms::Padding(4, 0, 4, 0);
 		this->lblPassword->Name = L"lblPassword";
-		this->lblPassword->Size = System::Drawing::Size(53, 13);
+		this->lblPassword->Size = System::Drawing::Size(78, 20);
 		this->lblPassword->TabIndex = 4;
 		this->lblPassword->Text = L"Password";
 		// 
 		// LoginForm
 		// 
-		this->AutoScaleDimensions = System::Drawing::SizeF(6, 13);
+		this->AcceptButton = this->btnLogin;
+		this->AutoScaleDimensions = System::Drawing::SizeF(9, 20);
 		this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
-		this->ClientSize = System::Drawing::Size(284, 161);
+		this->ClientSize = System::Drawing::Size(426, 248);
 		this->Controls->Add(this->lblPassword);
 		this->Controls->Add(this->lblUsername);
 		this->Controls->Add(this->btnLogin);
 		this->Controls->Add(this->txtPassword);
 		this->Controls->Add(this->txtUsername);
+		this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::FixedSingle;
+		this->Margin = System::Windows::Forms::Padding(4, 5, 4, 5);
 		this->Name = L"LoginForm";
+		this->StartPosition = System::Windows::Forms::FormStartPosition::CenterScreen;
 		this->Text = L"Login";
 		this->ResumeLayout(false);
 		this->PerformLayout();
+
 	}
 #pragma endregion
 

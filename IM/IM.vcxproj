@@ -154,6 +154,7 @@
     <ClInclude Include="MSSQLRepository.h" />
     <ClInclude Include="RoleManager.h" />
     <ClInclude Include="SessionManager.h" />
+    <ClInclude Include="SqlRepoHandler.h" />
     <ClInclude Include="User.h" />
     <ClInclude Include="UserRole.h" />
     <ClInclude Include="Utility.h" />

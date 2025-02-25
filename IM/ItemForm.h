@@ -29,6 +29,7 @@ private:
 
 private: System::Windows::Forms::TextBox^ txtUnitPriceFloat;
 	   Item^ _currentItem;
+	   Item^ _newItem;
 public:
 	event ItemFormClosedEventHandler^ OnItemFormClosed;
 
@@ -123,6 +124,7 @@ private:
 		this->txtQuantity->Name = L"txtQuantity";
 		this->txtQuantity->Size = System::Drawing::Size(170, 26);
 		this->txtQuantity->TabIndex = 3;
+		this->txtQuantity->TextChanged += gcnew System::EventHandler(this, &ItemForm::txtQuantity_TextChanged);
 		// 
 		// txtUnitPrice
 		// 
@@ -207,6 +209,7 @@ private:
 		this->txtUnitPriceFloat->TabIndex = 5;
 		this->txtUnitPriceFloat->Text = L"00";
 		this->txtUnitPriceFloat->TextAlign = System::Windows::Forms::HorizontalAlignment::Center;
+		this->txtUnitPriceFloat->TextChanged += gcnew System::EventHandler(this, &ItemForm::txtUnitPriceFloat_TextChanged);
 		// 
 		// ItemForm
 		// 
@@ -295,26 +298,36 @@ private: Category^ FindCategoryById(List<Category^>^ categoryList, int catId) {
 	return nullptr;
 }
 
+private: void addItemWorker_DoWork(Object^ sender, DoWorkEventArgs^ e) {
+
+	auto itemRepo = gcnew MSSQLRepository<Item^>();
+	itemRepo->AddAsync(_newItem);
+}
+
+private: void addItemWorker_Completed(Object^ sender, RunWorkerCompletedEventArgs^ e) {
+	try
+	{
+		OnItemFormClosed();
+		MessageBox::Show("Item added!", "Information");
+		this->Close();
+	}
+	catch (Exception^ ex)
+	{
+		MessageBox::Show(ex->Message, "Error");
+	}
+}
+
 private: System::Void btnAddItem_Click(System::Object^ sender, System::EventArgs^ e) {
 	try
 	{
-		auto newItem = gcnew Item();
+		_newItem = gcnew Item();
+		prepareItem(_newItem);
+		Validator::ValidateItem(_newItem);
 
-		prepareItem(newItem);
-		Validator::ValidateItem(newItem);
-
-		auto itemRepo = gcnew MSSQLRepository<Item^>();
-		itemRepo->Add(newItem);
-		try
-		{
-			OnItemFormClosed();
-		}
-		catch (Exception^ ex)
-		{
-			// Logs can be added.
-		}
-		MessageBox::Show("Item added!", "Information");
-		this->Close();
+		BackgroundWorker^ worker = gcnew BackgroundWorker();
+		worker->DoWork += gcnew DoWorkEventHandler(this, &ItemForm::addItemWorker_DoWork);
+		worker->RunWorkerCompleted += gcnew RunWorkerCompletedEventHandler(this, &ItemForm::addItemWorker_Completed);
+		worker->RunWorkerAsync();
 	}
 	catch (Exception^ ex) {
 		MessageBox::Show(ex->Message, "Error");
@@ -351,9 +364,16 @@ private: Item^ prepareItem(Item^ item) {
 	return item;
 }
 
-
 private: System::Void txtUnitPrice_TextChanged(System::Object^ sender, System::EventArgs^ e) {
 	ValidateInteger(txtUnitPrice);
+}
+
+private: System::Void txtQuantity_TextChanged(System::Object^ sender, System::EventArgs^ e) {
+	ValidateInteger(txtQuantity);
+}
+
+private: System::Void txtUnitPriceFloat_TextChanged(System::Object^ sender, System::EventArgs^ e) {
+	ValidateInteger(txtUnitPriceFloat);
 }
 
 private: System::Void ValidateInteger(System::Windows::Forms::TextBox^ textBox) {

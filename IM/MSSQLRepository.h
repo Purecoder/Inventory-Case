@@ -3,6 +3,7 @@
 #include "EntityBase.h"
 #include "IRepository.h"
 #include "KeyAttribute.h"
+#include "SqlRepoHandler.h"
 
 using namespace System;
 using namespace System::Configuration;
@@ -10,8 +11,7 @@ using namespace System::Data;
 using namespace System::Data::SqlClient;
 using namespace System::Windows::Forms;
 using namespace System::Reflection;
-
-
+using namespace System::Threading::Tasks;
 
 generic <typename T> where T : EntityBase, gcnew()
 ref class MSSQLRepository : IRepository<T> {
@@ -25,7 +25,7 @@ private:
 			return conn;
 		}
 		catch (SqlException^ ex) {
-			MessageBox::Show("Error while connecting Database!", "Connection Error", MessageBoxButtons::OK, MessageBoxIcon::Error);
+			throw gcnew Exception("Error while connecting Database!", ex);
 		}
 	}
 
@@ -41,6 +41,9 @@ public:
 	}
 
 	String^ LastUpdated = "LastUpdated";
+
+	delegate void OperationDelegate(T entity);
+
 
 	void Add(T entity) override {
 		SqlConnection^ conn = OpenConnection();
@@ -74,11 +77,20 @@ public:
 			if (transaction != nullptr) {
 				transaction->Rollback();
 			}
-			Console::WriteLine("Error while insert data. Error: " + ex->Message);
+			throw gcnew Exception("Error while insert data. Error: " + ex->Message);
 		}
 		finally {
 			conn->Close();
 		}
+	}
+
+	void AddAsync(T entity) override {
+
+		SqlOperation<T>^ op = gcnew SqlOperation<T>(entity,
+			gcnew Action<T>(this, &MSSQLRepository<T>::Add)
+		);
+		Action^ del = gcnew Action(op, &SqlOperation<T>::Execute);
+		SqlRepoHandler::ExecuteAsyncHelper(del);
 	}
 
 	void Update(T entity) override {
@@ -119,7 +131,7 @@ public:
 			if (transaction != nullptr) {
 				transaction->Rollback();
 			}
-			Console::WriteLine("Error while update data. Error:" + ex->Message);
+			throw gcnew Exception("Error while update data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -144,14 +156,35 @@ public:
 			if (transaction != nullptr) {
 				transaction->Rollback();
 			}
-			Console::WriteLine("Error while delete. Error: " + ex->Message);
+			throw gcnew Exception("Error while delete. Error:" + ex->Message);
+
 		}
 		finally {
 			conn->Close();
 		}
 	}
 
+
+	List<T>^ GetAllItemsHelper() {
+		SqlOperation<T>^ op = gcnew SqlOperation<T>(gcnew Func<List<T>^>(this, &MSSQLRepository<T>::GetAllItems));
+		op->Execute();
+		return op->GetResult();
+	}
+
+	Task<List<T>^>^ GetAllItemsAsync() override {
+
+		return Task<List<T>^>::Run(gcnew Func<List<T>^>(this, &MSSQLRepository<T>::GetAllItemsHelper));
+
+		/*	SqlOperation<T>^ op = gcnew SqlOperation<T>(
+				gcnew Func<List<T>^>(this, &MSSQLRepository<T>::GetAllItems));
+
+			Action^ del = gcnew Action(op, &SqlOperation<T>::Execute);
+			SqlRepoHandler::ExecuteAsyncHelper(del);
+			return op->GetResult();*/
+	}
+
 	List<T>^ GetAllItems() override {
+
 		List<T>^ list = gcnew List<T>();
 		SqlConnection^ conn = OpenConnection();
 		try {
@@ -173,7 +206,7 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Error while retrieve data.  Error: " + ex->Message);
+			throw gcnew Exception("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -215,7 +248,7 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Error while retrieve data. Error:" + ex->Message);
+			throw gcnew Exception("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -243,7 +276,7 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Error while retrieve data. Error:" + ex->Message);
+			throw gcnew Exception("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -273,7 +306,7 @@ public:
 			}
 		}
 		catch (Exception^ ex) {
-			Console::WriteLine("Error while retrieve data. Error: " + ex->Message);
+			throw gcnew Exception("Error while retrieve data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();
@@ -301,7 +334,7 @@ public:
 			itemList = ConvertDataTableToList(dataTable);
 		}
 		catch (Exception^ ex) {
-			MessageBox::Show("Hata: " + ex->Message, "Hata", MessageBoxButtons::OK, MessageBoxIcon::Error);
+			throw gcnew Exception("Error while retrieve low stock data. Error:" + ex->Message);
 		}
 		finally {
 			conn->Close();

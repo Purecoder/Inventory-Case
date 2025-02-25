@@ -24,7 +24,7 @@ using namespace System::Drawing;
 /// </summary>
 public ref class MainForm : public System::Windows::Forms::Form
 {
-private:
+private: int gridDataLoadCount = 0;
 public:
 	MainForm()
 	{
@@ -63,6 +63,7 @@ private: System::Windows::Forms::ComboBox^ cmbFilterCategory;
 private: System::Windows::Forms::Button^ btnFilterSearch;
 private: System::Windows::Forms::GroupBox^ grpExportReport;
 private: System::Windows::Forms::Label^ lblUserInfo;
+private: System::Windows::Forms::Label^ lblGridInfo;
 
 
 
@@ -100,6 +101,7 @@ private:
 		this->txtFilterItemName = (gcnew System::Windows::Forms::TextBox());
 		this->grpExportReport = (gcnew System::Windows::Forms::GroupBox());
 		this->lblUserInfo = (gcnew System::Windows::Forms::Label());
+		this->lblGridInfo = (gcnew System::Windows::Forms::Label());
 		(cli::safe_cast<System::ComponentModel::ISupportInitialize^>(this->grdProducts))->BeginInit();
 		this->groupBox1->SuspendLayout();
 		this->grpExportReport->SuspendLayout();
@@ -129,7 +131,7 @@ private:
 		dataGridViewCellStyle2->SelectionForeColor = System::Drawing::SystemColors::HighlightText;
 		dataGridViewCellStyle2->WrapMode = System::Windows::Forms::DataGridViewTriState::False;
 		this->grdProducts->DefaultCellStyle = dataGridViewCellStyle2;
-		this->grdProducts->Location = System::Drawing::Point(12, 457);
+		this->grdProducts->Location = System::Drawing::Point(12, 473);
 		this->grdProducts->Name = L"grdProducts";
 		this->grdProducts->ReadOnly = true;
 		this->grdProducts->RowHeadersWidth = 62;
@@ -282,11 +284,22 @@ private:
 		this->lblUserInfo->TabIndex = 101;
 		this->lblUserInfo->Text = L"label4";
 		// 
+		// lblGridInfo
+		// 
+		this->lblGridInfo->AutoSize = true;
+		this->lblGridInfo->Font = (gcnew System::Drawing::Font(L"Microsoft Sans Serif", 9, System::Drawing::FontStyle::Bold, System::Drawing::GraphicsUnit::Point,
+			static_cast<System::Byte>(162)));
+		this->lblGridInfo->Location = System::Drawing::Point(19, 440);
+		this->lblGridInfo->Name = L"lblGridInfo";
+		this->lblGridInfo->Size = System::Drawing::Size(0, 22);
+		this->lblGridInfo->TabIndex = 102;
+		// 
 		// MainForm
 		// 
 		this->AutoScaleDimensions = System::Drawing::SizeF(9, 20);
 		this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 		this->ClientSize = System::Drawing::Size(1173, 964);
+		this->Controls->Add(this->lblGridInfo);
 		this->Controls->Add(this->lblUserInfo);
 		this->Controls->Add(this->grpExportReport);
 		this->Controls->Add(this->groupBox1);
@@ -309,11 +322,12 @@ private:
 #pragma endregion
 
 private: System::Void MainForm_Load(System::Object^ sender, System::EventArgs^ e) {
+
 	loadCategoryData();
 	loadGridData();
 	addActionButtonsToGrid();
 	RoleManager::ApplyRoleRestrictions(this, SessionManager::CurrentUser->Role);
-	lblUserInfo->Text= "Logged in as: " + SessionManager::CurrentUser->Username + "  Role: " + SessionManager::CurrentUser->Role.ToString();
+	lblUserInfo->Text = "Logged in as: " + SessionManager::CurrentUser->Username + "  Role: " + SessionManager::CurrentUser->Role.ToString();
 }
 
 private: System::Void btnCellUpdate_Click(System::Object^ sender, System::Windows::Forms::DataGridViewCellEventArgs^ e)
@@ -384,18 +398,50 @@ private: System::Void grdProducts_CellClick(System::Object^ sender, System::Wind
 	}
 }
 
+private:void LoadDataWithWorker() {
+	lblGridInfo->Visible = true;
+	lblGridInfo->Text = "Loading data...";
+	lblGridInfo->ForeColor = Color::DarkRed;
+
+	BackgroundWorker^ worker = gcnew BackgroundWorker();
+	worker->DoWork += gcnew DoWorkEventHandler(this, &MainForm::gridWorker_DoWork);
+	worker->RunWorkerCompleted += gcnew RunWorkerCompletedEventHandler(this, &MainForm::gridWorker_Completed);
+	worker->RunWorkerAsync();
+}
+
+private:void gridWorker_DoWork(Object^ sender, DoWorkEventArgs^ e) {
+
+	Thread::Sleep(2000); // For simulation
+
+	auto itemRepo = gcnew MSSQLRepository<ItemViewModel^>();
+	e->Result = itemRepo->GetAllItemsAsync()->Result;
+}
+
+private:void gridWorker_Completed(Object^ sender, RunWorkerCompletedEventArgs^ e) {
+	grdProducts->DataSource = e->Result;
+	gridDataLoadCount++;
+	lblGridInfo->Text = "Data loaded.";
+	lblGridInfo->ForeColor = Color::Green;
+	lblGridInfo->Visible = false;
+	addActionButtonsToGrid();
+}
+
 public: void loadGridData()
 {
 	try
 	{
-		auto itemRepo = gcnew MSSQLRepository<ItemViewModel^>();
-		auto items = itemRepo->GetAllItems();
+		LoadDataWithWorker();
+#pragma region without Async
+		//auto itemRepo = gcnew MSSQLRepository<ItemViewModel^>();
+		//auto items = itemRepo->GetAllItems();
+		//grdProducts->DataSource = items;
 
-		grdProducts->DataSource = items;
+#pragma endregion
+
 	}
 	catch (Exception^ ex)
 	{
-		MessageBox::Show("Error while retreive grid data!", "Error", System::Windows::Forms::MessageBoxButtons::OK, System::Windows::Forms::MessageBoxIcon::Error);
+		MessageBox::Show(ex->Message, "Error", System::Windows::Forms::MessageBoxButtons::OK, System::Windows::Forms::MessageBoxIcon::Error);
 	}
 
 }
@@ -415,20 +461,21 @@ private: System::Void loadGridDataByFilterParams()
 
 private: System::Void addActionButtonsToGrid()
 {
+	if (gridDataLoadCount == 1) {
+		System::Windows::Forms::DataGridViewButtonColumn^ updateColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
+		updateColumn->HeaderText = "";
+		updateColumn->Name = "btnCellUpdate";
+		updateColumn->Text = "Update";
+		updateColumn->UseColumnTextForButtonValue = true;
+		grdProducts->Columns->Add(updateColumn);
 
-	System::Windows::Forms::DataGridViewButtonColumn^ updateColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
-	updateColumn->HeaderText = "";
-	updateColumn->Name = "btnCellUpdate";
-	updateColumn->Text = "Update";
-	updateColumn->UseColumnTextForButtonValue = true;
-	grdProducts->Columns->Add(updateColumn);
-
-	System::Windows::Forms::DataGridViewButtonColumn^ deleteColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
-	deleteColumn->HeaderText = "";
-	deleteColumn->Name = "btnCellDelete";
-	deleteColumn->Text = "Delete";
-	deleteColumn->UseColumnTextForButtonValue = true;
-	grdProducts->Columns->Add(deleteColumn);
+		System::Windows::Forms::DataGridViewButtonColumn^ deleteColumn = gcnew System::Windows::Forms::DataGridViewButtonColumn();
+		deleteColumn->HeaderText = "";
+		deleteColumn->Name = "btnCellDelete";
+		deleteColumn->Text = "Delete";
+		deleteColumn->UseColumnTextForButtonValue = true;
+		grdProducts->Columns->Add(deleteColumn);
+	}
 }
 
 private: System::Void btnRefresh_Click(System::Object^ sender, System::EventArgs^ e) {

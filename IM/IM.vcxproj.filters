@@ -74,13 +74,16 @@
     <ClInclude Include="LoginForm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="UserRole.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="RoleManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SessionManager.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UserRole.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SqlRepoHandler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
