@@ -22,7 +22,7 @@ public:
 			saveFileDialog->FileName = fullFileName;
 
 			if (saveFileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
-				String^ filePath = fullFileName;
+				String^ filePath = saveFileDialog->FileName;
 				StreamWriter^ writer = gcnew StreamWriter(filePath, false, System::Text::Encoding::UTF8);
 
 				WriteHeader<T>(writer);
